@@ -1,56 +1,96 @@
-# Welcome to your Expo app 👋
+# Mi Escáner PDF
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicación personal para Android, con Expo SDK 57, React Native y TypeScript.
 
-## Get started
+## Funciones
 
-1. Install dependencies
+- Botón central de escaneo y controles grandes en español.
+- Google ML Kit Document Scanner en modo FULL: detección de hoja, corrección de perspectiva, recorte y filtros en su interfaz nativa.
+- Escaneo de varias hojas; admite nuevas sesiones para seguir agregando páginas.
+- Revisión, orden y eliminación de hojas antes de guardar.
+- Nombre obligatorio; dos documentos con el mismo nombre conservan archivos independientes.
+- PDF con cada hoja recortada a página completa, sin márgenes añadidos, conservando su proporción y los filtros del escáner.
+- Biblioteca local con miniaturas, búsqueda, fecha y tamaño.
+- Visor PDF con desplazamiento, zoom y contraseña cuando el archivo la requiera.
+- Importación desde el selector de archivos y recepción mediante Compartir/Abrir con de Android.
+- Compartir un PDF con su nombre mediante el menú de Android, incluyendo WhatsApp si está instalado.
+- Borrador persistente para continuar después de cerrar la app.
 
-   ```bash
-   npm install
-   ```
+## Ejecutar en Android
 
-2. Start the app
+Se necesita Node compatible con SDK 57, Android SDK, Java compatible y un teléfono con depuración USB o un emulador con Google Play Services.
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```sh
+npm install
+npm run android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Después de instalar la compilación de desarrollo:
 
-### Other setup steps
+```sh
+npm run start:dev
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+**Expo Go no incluye el motor de escaneo ni el visor PDF.** Es necesario instalar una compilación nativa. La primera apertura del escáner puede descargar sus componentes de Google Play Services; después el procesamiento se realiza en el dispositivo.
 
-## Learn more
+## APK independiente con EAS
 
-To learn more about developing your project with Expo, look at the following resources:
+El perfil `preview` genera un APK que funciona sin Metro. Requiere una cuenta de Expo y configurar el proyecto en EAS:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```sh
+npx eas-cli@latest login
+npx eas-cli@latest build:configure
+npx eas-cli@latest build --platform android --profile preview
+```
 
-## Join the community
+El perfil `development` genera un cliente de desarrollo; `production` genera un AAB para Google Play. No se ha publicado ni enviado la app a una tienda.
 
-Join our community of developers creating universal apps.
+## Arquitectura modular y hexagonal
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```text
+src/
+  app/                      Rutas delgadas de Expo Router
+  modules/
+    scanner/
+      domain/               Página escaneada y puerto DocumentScanner
+      application/          Caso de uso ScanPages
+      infrastructure/       Adaptador Google ML Kit
+    documents/
+      domain/               Documento, borrador y puertos
+      application/          Guardar, importar, nombrar y compartir
+      infrastructure/       Archivos locales, PDF, selector y compartir
+      presentation/         Pantallas, componentes y estado React
+  shared/ui/                Botones y tema
+  composition/              Conexión entre puertos y adaptadores
+tests/                      Reglas y persistencia con dobles del sistema nativo
+```
+
+El dominio y los casos de uso no importan Expo ni React Native. `composition` selecciona las implementaciones. El escáner devuelve imágenes procesadas; el documento conserva el orden que el usuario elige antes de exportarlas.
+
+## Persistencia
+
+Los documentos se guardan en el almacenamiento privado de la app, con un directorio por identificador, un PDF, una miniatura y metadatos JSON. Las rutas se reconstruyen al leer, permitiendo restauraciones que cambien el directorio raíz. El borrador se guarda separado y los cambios en metadatos se serializan para evitar perder el nombre al actualizar el conteo de páginas.
+
+Los PDF importados se copian a la biblioteca para no depender de permisos temporales de otras apps. Los originales externos se conservan. Para guardar una copia fuera de la app, usa Compartir. Desinstalar la app elimina su almacenamiento local.
+
+## Comprobaciones
+
+```sh
+npm run typecheck
+npm run lint
+npm test
+npx expo-doctor
+```
+
+Las pruebas comprueban validación, orden, cancelación, errores de exportación, nombres repetidos, recuperación del borrador, escritura interrumpida, importación y actualización concurrente de metadatos. Los dobles de archivos reproducen las copias asíncronas de Expo SDK 57; no sustituyen las pruebas del teléfono.
+
+## Estado de validación
+
+- TypeScript y lint: aprobados.
+- Pruebas automatizadas: 11 aprobadas.
+- Expo Doctor: 21/21 comprobaciones aprobadas.
+- Prebuild Android: generado correctamente mediante Expo, sin editar los archivos nativos generados.
+- Bundle JavaScript Android: generado correctamente con `--no-bytecode`.
+- APK y ejecución nativa: pendientes. El entorno de ejecución impide la conexión local que necesita Gradle (`Unable to establish loopback connection`) y la ejecución de `hermesc.exe`.
+
+Antes de usarla a diario, probar en un teléfono real: detección sobre distintos fondos, sombras, filtros, varias páginas, reinicio con borrador, PDF externo y envío del archivo por WhatsApp. La memoria disponible limita el tamaño práctico de documentos muy grandes.

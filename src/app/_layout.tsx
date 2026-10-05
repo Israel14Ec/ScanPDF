@@ -1,18 +1,27 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
-
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { DocumentsProvider } from "@/modules/documents/presentation/DocumentsProvider";
+import { colors } from "@/shared/ui/theme";
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <DocumentsProvider>
+      <StatusBar style="dark" />
+      <Stack
+        screenOptions={{
+          headerTintColor: colors.ink,
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitleStyle: { fontSize: 19, fontWeight: "700" },
+          contentStyle: { backgroundColor: colors.background },
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="editor" options={{ title: "Escanear documento" }} />
+        <Stack.Screen
+          name="document/[id]"
+          options={{ title: "Mi documento" }}
+        />
+        <Stack.Screen name="incoming" options={{ title: "Abrir PDF" }} />
+      </Stack>
+    </DocumentsProvider>
   );
 }
